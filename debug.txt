@@ -1,0 +1,24 @@
+VÉRTICES + RÓTULOS
+0 VAZIO
+1 "Itajai"
+2 "Camboriu"
+3 "Brusque"
+4 "Nova
+5 "Guabiruba"
+6 "Navegantes"
+ARESTAS
+1 2, 1.0
+1 6, 1.0
+2 1, 1.0
+2 3, 1.0
+3 2, 1.0
+3 6, 1.0
+3 4, 1.0
+3 5, 1.0
+4 3, 1.0
+4 5, 1.0
+5 3, 1.0
+5 4, 1.0
+6 1, 1.0
+6 3, 1.0
+7
