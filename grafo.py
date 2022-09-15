@@ -116,7 +116,7 @@ class Grafo:
     #QUESTAO 3
 
     def cicloEuleriano(self):
-        #Gambiarra
+        #Cria dicionário com todas as arestas sem duplicatas
         todasArestas = []
         for index, arestas in enumerate(self.arestas):
             for aresta in arestas:
