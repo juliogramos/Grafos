@@ -1,4 +1,3 @@
-from logging import NullHandler
 from math import inf
 from queue import Queue
 
@@ -7,48 +6,50 @@ class Grafo:
     #QUESTAO 1
 
     def __init__(self, arquivo) -> None:
-        # O contéudo da lista no indíce v é o conteúdo do vértice v.
-        # Por enquanto, só rótulo
-        self.vertices = []
+        # As chaves do dicionario sao os numeros dos vertices
+        # O conteudo eh o rotulo do vertice
+        self.vertices = {}
 
-        # O conteúdo da lista no indíce v é uma lista de tuplas.
-        # As tuplas contém um vértice adjacente a v e o peso da aresta.
-        self.arestas = []
+        # A chave do dicionario eh um conjunto frozenset com dois vertices
+        # O conteudo eh o peso da aresta
+        self.arestas = {}
 
         self.ler(arquivo)
-        self.debugLists()
 
     def qtdVertices(self) -> int:
-        return len(self.vertices)
+        return len(self.vertices.keys())
 
     def qtdArestas(self) -> int:
-        contador = 0
-        for i in range(len(self.vertices)):
-            contador += len(self.arestas[i])
-        return contador//2
+        return len(self.arestas.keys())
 
     def grau(self, v: int) -> int:
-        return len(self.arestas[v])
+        contador = 0
+        for i in self.arestas.keys():
+            if v in i:
+                contador += 1
+        return contador
 
     def rotulo(self, v: int) -> str:
         return self.vertices[v]
 
     def vizinhos(self, v: int) -> list:
         vizinhos = []
-        for i in self.arestas[v]:
-            vizinhos.append(i[0])
+        for i in self.arestas.keys():
+            if v in i:
+                lista = list(i)
+                for j in lista:
+                    if j != v:
+                        vizinhos.append(j)
         return vizinhos
 
     def haAresta(self, u: int, v: int) -> bool:
-        for i in self.arestas[u]:
-            if i[0] == v:
-                return True
+        if frozenset((u, v)) in self.arestas.keys():
+            return True
         return False
 
     def peso(self, u: int, v: int) -> int:
-        for i in self.arestas[u]:
-            if i[0] == v:
-                return i[0]
+        if frozenset((u,v)) in self.arestas.keys():
+            return self.arestas[frozenset((u,v))]
         return inf
 
     def ler(self, arquivo):
@@ -58,9 +59,6 @@ class Grafo:
                 newline = line.strip().split(' ')
                 if newline[0] == "*vertices":
                     mode = "VERTICES"
-                    self.vertices = ["VAZIO"] * (int(newline[1]) + 1)
-                    for _ in range (int(newline[1]) + 1):
-                        self.arestas.append([])
                 elif newline[0] == "*edges":
                     mode = "EDGES"
                 else:
@@ -70,35 +68,26 @@ class Grafo:
                         v = int(newline[0])
                         u = int(newline[1])
                         peso = float(newline[2])
-                        self.arestas[v].append((u,peso))
-                        self.arestas[u].append((v,peso))
-
-    def debugLists(self):
-        debugFile = open('debug.txt', 'w')
-        print("VÉRTICES + RÓTULOS", file=debugFile)
-        for i in range(len(self.vertices)):
-            vertice = str(i)
-            rotulo = self.vertices[i]
-            txt = vertice + ' ' + rotulo
-            print(txt, file=debugFile)
-        print("ARESTAS", file=debugFile)
-        for i in range(len(self.arestas)):
-            if self.arestas[i] == []:
-                continue
-            for j in self.arestas[i]:
-                v = str(i)
-                u = str(j).strip("(),")
-                txt = v + ' ' + u
-                print(txt, file=debugFile)
-        print(self.qtdArestas(), file=debugFile)
-        debugFile.close()
+                        self.arestas[frozenset((u,v))] = peso
 
     #QUESTAO 2
 
     def buscaEmLargura(self, s):
-        c = [False] * len(self.vertices)
-        d = [inf] * len(self.vertices)
-        a = [None] * len(self.vertices)
+        #c = [False] * len(self.vertices.keys())
+        c = {}
+        for i in self.vertices.keys():
+            c[i] = False
+
+        #d = [inf] * len(self.vertices.keys())
+        d = {}
+        for i in self.vertices.keys():
+            d[i] = inf
+
+        #a = [None] * len(self.vertices.keys())
+        a = {}
+        for i in self.vertices.keys():
+            a[i] = None
+
         c[s] = True
         d[s] = 0
         q = Queue(len(self.vertices))
@@ -116,18 +105,8 @@ class Grafo:
     #QUESTAO 3
 
     def cicloEuleriano(self):
-        #Cria dicionário com todas as arestas sem duplicatas
-        todasArestas = []
-        for index, arestas in enumerate(self.arestas):
-            for aresta in arestas:
-                novaTupla = (index,) + (aresta[0],)
-                novaTupla = frozenset(novaTupla)
-                todasArestas.append(novaTupla)
-        c = dict.fromkeys(todasArestas)
-        #print(c)
-
-        #Comeca algoritmo
-        for key in c:
+        c = {}
+        for key in self.arestas.keys():
             c[key] = False
 
         v = list(list(c)[0])[0]
@@ -182,35 +161,22 @@ class Grafo:
     #QUESTAO 4
 
     def bellmanFord(self,s):
-        #Cria dicionário com todas as arestas sem duplicatas
-        # e coloca pesos
-        todasArestas = []
-        pesos = []
-        for index, arestas in enumerate(self.arestas):
-            for aresta in arestas:
-                novaTupla = (index,) + (aresta[0],)
-                novaTupla = frozenset(novaTupla)
-                todasArestas.append(novaTupla)
-                pesos.append(aresta[1])
-        E = dict.fromkeys(todasArestas)
-        pesos = list(dict.fromkeys(pesos))
-        keys = E.keys()
-        for index, key in enumerate(keys):
-            E[key] = pesos[index]
-        #for key, value in E.items():
-            #print(key, ' : ', value)
+        E = {}
+        for key, value in self.arestas.items():
+            E[key] = value
 
         #Começa o algoritmo
-        d = [inf] * len(self.vertices)
-        a = [None] * len(self.vertices)
+        d = [inf] * (len(self.vertices)+1)
+
+        a = [None] * (len(self.vertices)+1)
+
         d[s] = 0
 
-        for i in range(len(self.vertices) - 1):
+        for _ in range(len(self.vertices)):
             for aresta in E.keys():
                 aTupla = tuple(aresta)
                 u = aTupla[0]
                 v = aTupla[1]
-                print('u: ' + str(u) +'\nv: ' + str(v) + '\nd[u]: ' + str(d[u]) + '\nd[v]: ' + str(d[v]))
 
                 if  d[u] != inf and d[v] > (d[u] + E[aresta]):
                     d[v] = d[u] + E[aresta]
@@ -219,8 +185,6 @@ class Grafo:
                 if  d[v] != inf and d[u] > (d[v] + E[aresta]):
                     d[u] = d[v] + E[aresta]
                     a[u] = v
-
-            print(d)
             
         for aresta in E.keys():
             aTupla = tuple(aresta)
@@ -233,4 +197,82 @@ class Grafo:
             if d[v] != inf and d[u] > d[v] + E[aresta]:
                 return (False, [], [])
 
+        d = d[1:]
+        a = a[1:]
         return (True, d, a)
+
+    def floydWarshall(self):
+        E = {}
+        for key, value in self.arestas.items():
+            E[key] = value
+
+        W = [ [None] * (self.qtdVertices()) for _ in range(self.qtdVertices()) ]
+        for u in range (self.qtdVertices()):
+            for v in range (self.qtdVertices()):
+                if u == v:
+                    W[u][v] = 0
+                elif frozenset((u+1,v+1)) in E.keys():
+                    W[u][v] = E[frozenset((u+1,v+1))]
+                else:
+                    W[u][v] = inf
+        D = []
+        D.append(W)
+
+        for k in range(1, self.qtdVertices()):
+            D.append([ [None] * (self.qtdVertices()) for _ in range(self.qtdVertices()) ])
+            for u in self.vertices.keys():
+                for v in self.vertices.keys():
+                    D[k][u-1][v-1] = min(D[k-1][u-1][v-1], D[k-1][u-1][k] + D[k-1][k][v-1])
+        return D[len(self.vertices.keys())-1]
+
+
+    #FUNCOES PARA PRINT/DEBUG
+    def debugQ1(self):
+        print(self.qtdVertices())
+        print(self.qtdArestas())
+        print(self.grau(52))
+        print(self.rotulo(52))
+        print(self.vizinhos(52))
+        print(self.haAresta(52, 5))
+        print(self.haAresta(52, 1))
+        print(self.peso(52, 5))
+
+    def debugDics(self):
+        debugFile = open('debug.txt', 'w')
+        print("VERTICES + ROTULOS", file=debugFile)
+        for i in self.vertices.keys():
+            vertice = str(i)
+            rotulo = self.vertices[i]
+            txt = vertice + ' ' + rotulo
+            print(txt, file=debugFile)
+        print("ARESTAS", file=debugFile)
+        for i in self.arestas.keys():
+            print(str(tuple(i)) + ": " + str(self.arestas[i]), file=debugFile)
+        print(self.qtdArestas(), file=debugFile)
+        debugFile.close()
+
+    def printBusca(self, tupla):
+        n = max(list(tupla[0].values()))
+        niveis = [ [] * (n+1) for i in range(n+1) ]
+        for key, value in tupla[0].items():
+            niveis[value].append(str(key))
+        for i in range(n+1):
+            nivel = str(i)
+            verts = ','.join(niveis[i])
+            print(nivel + ": " + verts)
+
+    def printCiclo(self, tupla):
+        (r, ciclo) = tupla
+        print(r)
+        print(ciclo)
+
+    def printBellmanFord(self, tupla):
+        (res, d, a) = tupla
+        print(res)
+        print(d)
+        print(a)
+
+    def printFloydWarshall(self, matriz):
+        for index, lista in enumerate(matriz):
+            strInts = ','.join(str(n) for n in lista)
+            print(str(index+1) + ":" + strInts)
