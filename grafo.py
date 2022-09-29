@@ -73,17 +73,14 @@ class Grafo:
     #QUESTAO 2
 
     def buscaEmLargura(self, s):
-        #c = [False] * len(self.vertices.keys())
         c = {}
         for i in self.vertices.keys():
             c[i] = False
 
-        #d = [inf] * len(self.vertices.keys())
         d = {}
         for i in self.vertices.keys():
             d[i] = inf
 
-        #a = [None] * len(self.vertices.keys())
         a = {}
         for i in self.vertices.keys():
             a[i] = None
@@ -161,10 +158,6 @@ class Grafo:
     #QUESTAO 4
 
     def bellmanFord(self,s):
-        E = {}
-        for key, value in self.arestas.items():
-            E[key] = value
-
         #Começa o algoritmo
         d = [inf] * (len(self.vertices)+1)
 
@@ -173,46 +166,44 @@ class Grafo:
         d[s] = 0
 
         for _ in range(len(self.vertices)):
-            for aresta in E.keys():
+            for aresta in self.arestas.keys():
                 aTupla = tuple(aresta)
                 u = aTupla[0]
                 v = aTupla[1]
 
-                if  d[u] != inf and d[v] > (d[u] + E[aresta]):
-                    d[v] = d[u] + E[aresta]
+                if  d[u] != inf and d[v] > (d[u] + self.arestas[aresta]):
+                    d[v] = d[u] + self.arestas[aresta]
                     a[v] = u
 
-                if  d[v] != inf and d[u] > (d[v] + E[aresta]):
-                    d[u] = d[v] + E[aresta]
+                if  d[v] != inf and d[u] > (d[v] + self.arestas[aresta]):
+                    d[u] = d[v] + self.arestas[aresta]
                     a[u] = v
             
-        for aresta in E.keys():
+        for aresta in self.arestas.keys():
             aTupla = tuple(aresta)
             v = aTupla[0]
             u = aTupla[1]
 
-            if d[u] != inf and d[v] > d[u] + E[aresta]:
+            if d[u] != inf and d[v] > d[u] + self.arestas[aresta]:
                 return (False, [], [])
 
-            if d[v] != inf and d[u] > d[v] + E[aresta]:
+            if d[v] != inf and d[u] > d[v] + self.arestas[aresta]:
                 return (False, [], [])
 
         d = d[1:]
         a = a[1:]
         return (True, d, a)
 
-    def floydWarshall(self):
-        E = {}
-        for key, value in self.arestas.items():
-            E[key] = value
+    #Questao 5
 
+    def floydWarshall(self):
         W = [ [None] * (self.qtdVertices()) for _ in range(self.qtdVertices()) ]
         for u in range (self.qtdVertices()):
             for v in range (self.qtdVertices()):
                 if u == v:
                     W[u][v] = 0
-                elif frozenset((u+1,v+1)) in E.keys():
-                    W[u][v] = E[frozenset((u+1,v+1))]
+                elif frozenset((u+1,v+1)) in self.arestas.keys():
+                    W[u][v] = self.arestas[frozenset((u+1,v+1))]
                 else:
                     W[u][v] = inf
         D = []
