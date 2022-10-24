@@ -5,16 +5,22 @@ class Grafo:
 
     #QUESTAO 1
 
-    def __init__(self, arquivo) -> None:
-        # As chaves do dicionario sao os numeros dos vertices
-        # O conteudo eh o rotulo do vertice
-        self.vertices = {}
+    def __init__(self, arquivo, vertices, arestas,) -> None:
+        if vertices == None or arestas == None:
+            # As chaves do dicionario sao os numeros dos vertices
+            # O conteudo eh o rotulo do vertice
+            self.vertices = {}
 
-        # A chave do dicionario eh um conjunto frozenset com dois vertices
-        # O conteudo eh o peso da aresta
-        self.arestas = {}
+            # A chave do dicionario eh um conjunto frozenset com dois vertices
+            # O conteudo eh o peso da aresta
+            self.arestas = {}
 
-        self.ler(arquivo)
+            self.dirigido = False
+
+            self.ler(arquivo)
+        else:
+            self.vertices = vertices
+            self.arestas = arestas
 
     def qtdVertices(self) -> int:
         return len(self.vertices.keys())
@@ -43,14 +49,26 @@ class Grafo:
         return vizinhos
 
     def haAresta(self, u: int, v: int) -> bool:
-        if frozenset((u, v)) in self.arestas.keys():
-            return True
-        return False
+        if self.dirigido:
+            if (u, v) in self.arestas.keys() or (v, u) in self.arestas.keys():
+                return True
+            return False
+        else:
+            if frozenset((u, v)) in self.arestas.keys():
+                return True
+            return False
 
     def peso(self, u: int, v: int) -> int:
-        if frozenset((u,v)) in self.arestas.keys():
-            return self.arestas[frozenset((u,v))]
-        return inf
+        if self.dirigido:
+            if (u,v) in self.arestas.keys():
+                return self.arestas[(u,v)]
+            elif (v,u) in self.arestas.keys():
+                return self.arestas[(v,u)]
+            return inf
+        else:
+            if frozenset((u,v)) in self.arestas.keys():
+                return self.arestas[frozenset((u,v))]
+            return inf
 
     def ler(self, arquivo):
         mode = ""
@@ -61,6 +79,10 @@ class Grafo:
                     mode = "VERTICES"
                 elif newline[0] == "*edges":
                     mode = "EDGES"
+                    self.dirigido = False
+                elif newline[0] == "*arcs":
+                    mode = "ARCS"
+                    self.dirigido = True
                 else:
                     if mode == "VERTICES":
                         self.vertices[int(newline[0])] = newline[1]
@@ -69,6 +91,11 @@ class Grafo:
                         u = int(newline[1])
                         peso = float(newline[2])
                         self.arestas[frozenset((u,v))] = peso
+                    elif mode == "ARCS":
+                        u = int(newline[0])
+                        v = int(newline[1])
+                        peso = float(newline[2])
+                        self.arestas[(u,v)] = peso
 
     #QUESTAO 2
 
@@ -216,9 +243,97 @@ class Grafo:
                     D[k][u-1][v-1] = min(D[k-1][u-1][v-1], D[k-1][u-1][k] + D[k-1][k][v-1])
         return D[len(self.vertices.keys())-1]
 
+    #ATIVIDADE 2
+    #Metodos auxiliares
+    def entrantes(self, vertice):
+        lista = []
+        for arco in self.arestas.keys():
+            if vertice == arco[1]:
+                lista.append(arco[0])
+        return lista
+    
+    def saintes (self,vertice):
+        lista = []
+        for arco in self.arestas.keys():
+            if vertice == arco[0]:
+                lista.append(arco[1])
+        return lista
+
+    #Questao 1
+    def CFC(self):
+        (C,T,Alinha, f) = self.DFS(self)
+        At = {}
+        for (u, v) in self.arestas.keys():
+            At[v,u] = self.arestas[(u,v)]
+        grafoT = Grafo(None, self.vertices, At)
+        (Ct, Tt, Alinhat, Ft) = self.DFSadaptado(grafoT, f)
+        return Alinhat
+
+    def DFS(self, grafo):
+        c = {}
+        for v in grafo.vertices.keys():
+            c[v] = False
+
+        t = {}
+        for v in grafo.vertices.keys():
+            t[v] = inf
+
+        f = {}
+        for v in grafo.vertices.keys():
+            f[v] = inf
+
+        a = {}
+        for v in grafo.vertices.keys():
+            a[v] = None
+
+        tempo = 0
+
+        for u in grafo.vertices.keys():
+            if c[u] == False:
+                self.DFSvisit(grafo, u, c, t, a, f, tempo)
+
+        return (c, t, a, f)
+
+    def DFSadaptado(self, grafo, f):
+        c = {}
+        for v in grafo.vertices.keys():
+            c[v] = False
+
+        t = {}
+        for v in grafo.vertices.keys():
+            t[v] = inf
+
+        a = {}
+        for v in grafo.vertices.keys():
+            a[v] = None
+
+        tempo = 0
+
+        fSorted = {}
+        sorted_keys = reversed(sorted(f, key=f.get))
+        for w in sorted_keys:
+            fSorted[w] = f[w]
+        print(fSorted)
+
+        for u in fSorted.keys():
+            if c[u] == False:
+                self.DFSvisit(grafo, u, c, t, a, f, tempo)
+
+        return (c, t, a, f)
+
+    def DFSvisit(self, grafo, v, c, t, a, f, tempo):
+        c[v] = True
+        tempo += 1
+        t[v] = tempo
+        for u in grafo.saintes(v):
+            if c[u] == False:
+                a[u] = v
+                self.DFSvisit(grafo, u, c, t, a, f, tempo)
+        tempo += 1
+        f[v] = tempo
 
     #FUNCOES PARA PRINT/DEBUG
-    def debugQ1(self):
+    def debugQ1A1(self):
         print(self.qtdVertices())
         print(self.qtdArestas())
         print(self.grau(52))
@@ -227,6 +342,20 @@ class Grafo:
         print(self.haAresta(52, 5))
         print(self.haAresta(52, 1))
         print(self.peso(52, 5))
+
+    def debugQ1A2(self):
+        print(self.qtdVertices())
+        print(self.qtdArestas())
+        print(self.grau(2))
+        print(self.rotulo(2))
+        print(self.vizinhos(2))
+        print(self.haAresta(2, 3))
+        print(self.haAresta(2, 7))
+        print(self.haAresta(2, 8))
+        print(self.peso(2, 7))
+        print(self.entrantes(2))
+        print(self.saintes(2))
+
 
     def debugDics(self):
         debugFile = open('debug.txt', 'w')
