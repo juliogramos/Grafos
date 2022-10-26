@@ -1,5 +1,7 @@
 from math import inf
+from operator import truediv
 from queue import Queue
+from conjuntoDisjunto import *
 
 class Grafo:
 
@@ -85,7 +87,8 @@ class Grafo:
                     self.dirigido = True
                 else:
                     if mode == "VERTICES":
-                        self.vertices[int(newline[0])] = newline[1]
+                        rot = ' '.join(newline[1:])
+                        self.vertices[int(newline[0])] = rot
                     elif mode == "EDGES":
                         v = int(newline[0])
                         u = int(newline[1])
@@ -286,7 +289,7 @@ class Grafo:
         for v in grafo.vertices.keys():
             a[v] = None
 
-        tempo = 0
+        tempo = [0]
 
         for u in grafo.vertices.keys():
             if c[u] == False:
@@ -307,13 +310,13 @@ class Grafo:
         for v in grafo.vertices.keys():
             a[v] = None
 
-        tempo = 0
+        tempo = [0]
 
         fSorted = {}
         sorted_keys = reversed(sorted(f, key=f.get))
         for w in sorted_keys:
             fSorted[w] = f[w]
-        print(fSorted)
+        #print(fSorted)
 
         for u in fSorted.keys():
             if c[u] == False:
@@ -323,15 +326,55 @@ class Grafo:
 
     def DFSvisit(self, grafo, v, c, t, a, f, tempo):
         c[v] = True
-        tempo += 1
-        t[v] = tempo
+        tempo[0] += 1
+        t[v] = tempo[0]
         for u in grafo.saintes(v):
             if c[u] == False:
                 a[u] = v
+                #print(a)
                 self.DFSvisit(grafo, u, c, t, a, f, tempo)
-        tempo += 1
-        f[v] = tempo
+        tempo[0] += 1
+        f[v] = tempo[0]
 
+    #Questao 2
+    def OT(self):
+        c = {}
+
+        for v in self.vertices.keys():
+            c[v] = False
+
+        o = []
+        for v in self.vertices.keys():
+            #print("OT: " + str(v))
+            if c[v] == False:
+                self.visitOT(v, o, c)
+        return o
+
+    def visitOT(self, v, o, c):
+        c[v] = True
+        for u in self.saintes(v):
+            #print(u)
+            if c[u] == False:
+                self.visitOT(u,o,c)
+        o.insert(0, v)
+        #print(o)
+
+    #Questao 3
+    def kruskal(self):
+        a = []
+        s = {}
+        for v in self.vertices.keys():
+            s[v] = {v}
+        eLinha = dict(sorted(self.arestas.items(), key=lambda x : x[1]))
+        for aresta in eLinha.keys():
+            arestaTup = tuple(aresta)
+            if s[arestaTup[0]] != s[arestaTup[1]]:
+                a.append(aresta)
+                x = s[arestaTup[0]].union(s[arestaTup[1]])
+                for y in x:
+                    s[y] = x
+        return a
+                
     #FUNCOES PARA PRINT/DEBUG
     def debugQ1A1(self):
         print(self.qtdVertices())
@@ -396,3 +439,44 @@ class Grafo:
         for index, lista in enumerate(matriz):
             strInts = ','.join(str(n) for n in lista)
             print(str(index+1) + ":" + strInts)
+
+    def printCFC(self, arv):
+        comps = []
+        while len(arv) > 0:
+            for key, value in arv.items():
+                if value == None:
+                    comps.append([key])
+                    arv.pop(key)
+                    break
+                else:
+                    if self.checaSublistas(comps, value, key, arv):
+                        break
+        
+        for sub in comps:
+            if len(sub) > 1:
+                print(','.join(str(v) for v in sub))
+
+    def checaSublistas(self, comps, value, key, arv):
+        for sub in comps:
+            if value in sub:
+                sub.append(key)
+                arv.pop(key)
+                return True
+        return False
+
+    def printOT(self, o):
+        print(o)
+        l = []
+        for v in o:
+            l.append(self.rotulo(v).strip('"'))
+        print(' -> '.join(l))
+
+    def printKruskal(self, a):
+        soma = 0
+        arestasPrint = []
+        for aresta in a:
+            soma += self.arestas[aresta]
+            arestaTup = tuple(aresta)
+            arestasPrint.append(str(arestaTup[0]) + "-" + str(arestaTup[1]))
+        print(soma)
+        print(', '.join(arestasPrint))
