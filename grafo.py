@@ -1,13 +1,13 @@
 from math import inf
-from operator import truediv
 from queue import Queue
-from conjuntoDisjunto import *
+from itertools import chain,combinations
 
 class Grafo:
 
-    #QUESTAO 1
+    #ATIVIDADE 1
+    #QUESTAO 1 + auxiliares
 
-    def __init__(self, arquivo, vertices, arestas,) -> None:
+    def __init__(self, arquivo, vertices=None, arestas=None) -> None:
         if vertices == None or arestas == None:
             # As chaves do dicionario sao os numeros dos vertices
             # O conteudo eh o rotulo do vertice
@@ -23,6 +23,13 @@ class Grafo:
         else:
             self.vertices = vertices
             self.arestas = arestas
+            if not self.arestas:
+                self.dirigido = False
+            else:
+                if isinstance(list(self.arestas.keys())[0], tuple):
+                    self.dirigido = True
+                else:
+                    self.dirigido = False
 
     def qtdVertices(self) -> int:
         return len(self.vertices.keys())
@@ -99,6 +106,17 @@ class Grafo:
                         v = int(newline[1])
                         peso = float(newline[2])
                         self.arestas[(u,v)] = peso
+
+    def mudaCustoResidual(self,par,novo):
+        self.arestas[par] = novo
+
+    def criaArestasResidual(self):
+        adicionar = []
+        for aresta in self.arestas.keys():
+            if (aresta[1],aresta[0]) not in self.arestas.keys():
+                adicionar.append((aresta[1],aresta[0]))
+        for novo in adicionar:
+            self.arestas[novo] = 0
 
     #QUESTAO 2
 
@@ -374,9 +392,183 @@ class Grafo:
                 for y in x:
                     s[y] = x
         return a
+
+    #ATIVIDADE 3
+    #Questao 1
+
+    def edmondsKarp(self, s, t):
+        residual = Grafo(None, self.vertices, self.arestas)
+        residual.criaArestasResidual()
+        f = 0
+        p = residual.edmondsKarpBFS(s,t)
+        while p != None:
+            cfp = min(self.pesosCaminho(p))
+            for u,v in self.paresCaminho(p):
+                residual.mudaCustoResidual((u,v), residual.peso(u,v) - cfp)
+                residual.mudaCustoResidual((v,u), residual.peso(v,u) - cfp)
+            f += cfp
+            p = residual.edmondsKarpBFS(s,t)
+        return (f, residual)
+
+    def edmondsKarpBFS(self, s, t):
+        c = {}
+        a = {}
+        for v in self.vertices.keys():
+            c[v] = False
+            a[v] = None
+        c[s] = True
+        q = Queue()
+        q.put(s)
+        while q.empty() == False:
+            u = q.get()
+            for v in self.saintes(u):
+                if c[v] == False and self.peso(u,v) > 0:
+                    c[v] = True
+                    a[v] = u
+                    if v == t:
+                        p = [t]
+                        w = t
+                        while w != s:
+                            w = a[w]
+                            p.insert(0, w)
+                        return p
+                    q.put(v)
+        return None
+
+    def pesosCaminho(self, p):
+        pesos = []
+        for i in range(1,len(p)):
+            pesos.append(self.peso(p[i-1],p[i]))
+        return pesos
+
+    def paresCaminho(self,p):
+        pares = []
+        for i in range(1,len(p)):
+            pares.append((p[i-1],p[i]))
+        return pares
+
+    #Questao 2
+    def hopcroftKarp(self):
+        xLista, yLista = self.particoes()
+        d = {}
+        mate = {}
+        for v in self.vertices.keys():
+            d[v] = inf
+            mate[v] = None
+        d[None] = inf #Dnull
+        m = 0
+        while self.hkBFS(mate, d, xLista) == True:
+            for x in xLista:
+                if mate[x] == None:
+                    if self.hkDFS(mate, x, d) == True:
+                        m += 1
+        return (m, mate)
+    
+    def hkBFS(self, mate, d, xLista):
+        q = Queue()
+        for x in xLista:
+            if mate[x] == None:
+                d[x] = 0
+                q.put(x)
+            else:
+                d[x] = inf
+        d[None] = inf
+        while q.empty() == False:
+            x = q.get()
+            if d[x] < d[None]:
+                for y in self.vizinhos(x):
+                    if d[mate[y]] == inf:
+                        d[mate[y]] = d[x] + 1
+                        q.put(mate[y])
+        return d[None] != inf
+
+
+    def hkDFS(self, mate, x, d):
+        if x != None:
+            for y in self.vizinhos(x):
+                if d[mate[y]] == d[x] + 1:
+                    if self.hkDFS(mate, mate[y], d) == True:
+                        mate[y] == x
+                        mate[x] == y
+                        return True
+            d[x] = inf
+            return False
+        return True
+
+
+    def particoes(self):
+        x = []
+        y = []
+        verts = list(self.vertices.keys())
+        for i in range(len(verts)//2):
+            x.append(verts[i])
+        for i in range(len(verts)//2, len(verts)):
+            y.append(verts[i])
+        return (x, y)
+
+    #Questao 3
+    def lawler(self):
+        x = [None for i in range (0, 2**len(self.vertices))]
+        x[0] = 0
+        a = [set(x) for x in self.powerset(self.vertices)]
+        for sIndex, s in enumerate(a[1:]):
+            sIndex += 1
+            x[sIndex] = inf
+            novosVertices, novasArestas = self.montaGrafo(s)
+            gLinha = Grafo(None, novosVertices, novasArestas)
+            for c in gLinha.conjIndMax():
+                dif = s.difference(c)
+                i = a.index(dif)
+                if 1 + x[i] < x[sIndex]:
+                    x[sIndex] = 1 + x[i]
+        return x[-1]
+
+    def conjIndMax(self):
+        l = list(self.powerset(self.vertices))
+        l.reverse()
+        lRes = list(self.powerset(self.vertices))
+        lRes.reverse()
+        for s in l:
+            if s not in lRes:
+                continue
+            pares = [frozenset(x) for x in combinations(s, 2)]
+            existe = self.existeAresta(pares)
+            if not existe:
+                subs = list(self.powerset(s))
+                mesmo = subs.pop(-1)
+                for sub in subs:
+                    if sub in lRes: lRes.remove(sub)
+            else:
+                lRes.remove(s)
+        return [set(x) for x in lRes]
+
+    def existeAresta(self, pares):
+        for p in pares:
+            if p in self.arestas.keys():
+                return True
+        return False
+
+    def montaGrafo(self, s):
+        novosVertices = {}
+        novasArestas = {}
+        for aresta, peso in self.arestas.items():
+            aLista = list(aresta)
+            if aLista[0] in s and aLista[1] in s:
+                novasArestas[aresta] = peso
+
+        for v in s:
+            novosVertices[v] = self.vertices[v]
+        return(novosVertices, novasArestas)
+
+    #https://docs.python.org/3/library/itertools.html#itertools-recipes
+    def powerset(self, iterable):
+        "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
+        s = list(iterable)
+        return chain.from_iterable(combinations(s, r) for r in range(len(s)+1))
                 
     #FUNCOES PARA PRINT/DEBUG
     def debugQ1A1(self):
+        print("-----DEBUG-----")
         print(self.qtdVertices())
         print(self.qtdArestas())
         print(self.grau(52))
@@ -387,6 +579,7 @@ class Grafo:
         print(self.peso(52, 5))
 
     def debugQ1A2(self):
+        print("-----DEBUG-----")
         print(self.qtdVertices())
         print(self.qtdArestas())
         print(self.grau(2))
@@ -396,6 +589,20 @@ class Grafo:
         print(self.haAresta(2, 7))
         print(self.haAresta(2, 8))
         print(self.peso(2, 7))
+        print(self.entrantes(2))
+        print(self.saintes(2))
+
+    def debugQ1A3(self):
+        print("-----DEBUG-----")
+        print(self.qtdVertices())
+        print(self.qtdArestas())
+        print(self.grau(2))
+        print(self.rotulo(2))
+        print(self.vizinhos(2))
+        print(self.haAresta(2, 4))
+        print(self.haAresta(2, 6))
+        print(self.haAresta(3, 2))
+        print(self.peso(2, 4))
         print(self.entrantes(2))
         print(self.saintes(2))
 
@@ -413,8 +620,10 @@ class Grafo:
             print(str(tuple(i)) + ": " + str(self.arestas[i]), file=debugFile)
         print(self.qtdArestas(), file=debugFile)
         debugFile.close()
+        print("-----DEBUG.TXT ATUALIZADO-----")
 
     def printBusca(self, tupla):
+        print("-----BUSCA EM LARGURA-----")
         n = max(list(tupla[0].values()))
         niveis = [ [] * (n+1) for i in range(n+1) ]
         for key, value in tupla[0].items():
@@ -425,22 +634,26 @@ class Grafo:
             print(nivel + ": " + verts)
 
     def printCiclo(self, tupla):
+        print("-----CICLO EULERIANO-----")
         (r, ciclo) = tupla
         print(r)
         print(ciclo)
 
     def printBellmanFord(self, tupla):
+        print("-----BELLMAN-FORD-----")
         (res, d, a) = tupla
         print(res)
         print(d)
         print(a)
 
     def printFloydWarshall(self, matriz):
+        print("-----FLOYD-WARSHALL-----")
         for index, lista in enumerate(matriz):
             strInts = ','.join(str(n) for n in lista)
             print(str(index+1) + ":" + strInts)
 
     def printCFC(self, arv):
+        print("-----COMPONENTES FORTEMENTE CONEXAS-----")
         comps = []
         while len(arv) > 0:
             for key, value in arv.items():
@@ -465,13 +678,15 @@ class Grafo:
         return False
 
     def printOT(self, o):
-        print(o)
+        print("-----ORDENACAO TOPOLOGICA-----")
+        #print(o)
         l = []
         for v in o:
             l.append(self.rotulo(v).strip('"'))
         print(' -> '.join(l))
 
     def printKruskal(self, a):
+        print("-----KRUSKAL-----")
         soma = 0
         arestasPrint = []
         for aresta in a:
@@ -480,3 +695,6 @@ class Grafo:
             arestasPrint.append(str(arestaTup[0]) + "-" + str(arestaTup[1]))
         print(soma)
         print(', '.join(arestasPrint))
+
+    def printEdmondsKarp(self, res):
+        print(res[0])
